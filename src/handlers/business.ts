@@ -43,7 +43,8 @@ function ownerContext(): string {
 const NATURAL_TYPING = (process.env.NATURAL_TYPING ?? "true").toLowerCase() !== "false";
 
 const PRESENT_GAP_MS: readonly [number, number] = [1000, 12000]; // "at my phone"
-const AWAY_GAP_MS: readonly [number, number] = [30000, 120000]; // "stepped away"
+const AWAY_GAP_MS: readonly [number, number] = [15000, 30000]; // "stepped away"
+const MAX_TOTAL_DELAY_MS = 30000; // hard ceiling: gap + typing burst never exceed this
 const ACTIVE_WINDOW_MS = 60000; // replied recently => still in the conversation
 const AWAY_CHANCE_ACTIVE = 0.08; // small chance of a gap mid-conversation
 const AWAY_CHANCE_IDLE = 0.3; // larger chance when the chat has been quiet
@@ -215,9 +216,12 @@ export function registerBusinessHandlers(bot: Bot): void {
     // no typing shown), then a short typing burst right before sending. Gemini's own
     // latency counts toward the gap.
     if (NATURAL_TYPING) {
-      const gap = decideGapMs(key) - (Date.now() - startedAt);
-      if (gap > 0) await sleep(gap);
-      await showTyping(ctx, chatId, bizConnId, typingMs(reply));
+      const typing = typingMs(reply);
+      // Clamp so the whole thing (silent gap + typing burst) stays within the 30s ceiling.
+      const targetGap = Math.min(decideGapMs(key), MAX_TOTAL_DELAY_MS - typing);
+      const remaining = targetGap - (Date.now() - startedAt);
+      if (remaining > 0) await sleep(remaining);
+      await showTyping(ctx, chatId, bizConnId, typing);
     }
 
     try {
