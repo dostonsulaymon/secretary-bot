@@ -28,6 +28,7 @@ Secretary Bot uses Telegram's [Business Mode](https://core.telegram.org/bots#bus
 - 👥 **Per-contact awareness** — set tone, gender, and rules per sender (casual with friends, "never quote a price" to clients).
 - 🗣️ **Configure by chat** — DM the bot *"treat @ali as my client, formal, he's a he"* and it parses, confirms, and saves the contact — no file editing, no restart.
 - 📇 **Personal knowledge base** — answers from a facts/FAQ file, and refuses to invent personal details it doesn't know.
+- ⌨️ **Natural pacing** — shows a "typing…" indicator and delays replies proportional to length (with jitter), so it never answers at robot speed.
 - 🌍 **Language-matching** — replies in whatever language the sender writes in.
 - 💬 **Per-chat memory** — keeps the last 20 message pairs of context for each conversation.
 - ⏰ **Time-aware** — grounded with your real local date/time, so it never fabricates "what time is it?"
@@ -105,6 +106,7 @@ All configuration lives in `.env` (see [`.env.example`](.env.example)):
 | `OWNER_USER_ID` | ✅ | Your numeric Telegram ID ([@userinfobot](https://t.me/userinfobot)) — used to notify you and to ignore your own messages |
 | `SYSTEM_PROMPT` | ✅ | Base persona / instructions for the model |
 | `OWNER_TIMEZONE` | — | IANA timezone for date/time grounding (default `Asia/Tashkent`) |
+| `NATURAL_TYPING` | — | Show "typing…" and delay replies to feel human; `false` to reply instantly (default `true`) |
 
 ## Production
 

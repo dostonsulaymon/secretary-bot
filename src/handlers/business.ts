@@ -39,6 +39,34 @@ function ownerContext(): string {
   return `Current date and time (${OWNER_TIMEZONE}): ${now}. Use this if asked about the time or date — do not guess.`;
 }
 
+// Natural reply pacing: show "typing…" and delay proportional to message length.
+const NATURAL_TYPING = (process.env.NATURAL_TYPING ?? "true").toLowerCase() !== "false";
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Roughly how long a human would take to read the incoming message and type the reply. */
+function humanDelayMs(incoming: string, reply: string): number {
+  const reading = Math.min(incoming.length * 15, 3000); // ~time to read their message
+  const typing = Math.min(reply.length * 45, 9000); // ~time to type the reply
+  const jittered = (reading + typing) * (0.85 + Math.random() * 0.3); // ±15%
+  return Math.max(1200, Math.min(jittered, 12000));
+}
+
+/** Keep the "typing…" indicator alive for `ms` (Telegram clears it after ~5s). */
+async function showTyping(ctx: Context, chatId: number, bizConnId: string, ms: number): Promise<void> {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    try {
+      await ctx.api.sendChatAction(chatId, "typing", { business_connection_id: bizConnId });
+    } catch {
+      // best-effort — never let a typing blip stop the actual reply
+    }
+    await sleep(Math.min(4000, end - Date.now()));
+  }
+}
+
 /** What we remember about an active business connection. */
 interface ConnectionInfo {
   id: string;
@@ -144,6 +172,14 @@ export function registerBusinessHandlers(bot: Bot): void {
     const key = sessionKey(bizConnId, chatId);
     const history = getHistory(key);
 
+    // Start the "typing…" indicator immediately so Gemini's latency reads as composing.
+    const startedAt = Date.now();
+    if (NATURAL_TYPING) {
+      void ctx.api
+        .sendChatAction(chatId, "typing", { business_connection_id: bizConnId })
+        .catch(() => undefined);
+    }
+
     let reply: string;
     try {
       const systemPrompt = [
@@ -163,6 +199,13 @@ export function registerBusinessHandlers(bot: Bot): void {
       );
       // Do NOT send a broken/placeholder reply — stay silent.
       return;
+    }
+
+    // Pace the reply so it doesn't land instantly — wait the human-ish remainder
+    // (Gemini's own latency already counts toward it), keeping "typing…" visible.
+    if (NATURAL_TYPING) {
+      const remaining = humanDelayMs(text, reply) - (Date.now() - startedAt);
+      if (remaining > 0) await showTyping(ctx, chatId, bizConnId, remaining);
     }
 
     try {
