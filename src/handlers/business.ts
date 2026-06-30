@@ -1,6 +1,7 @@
 import { Bot, GrammyError, type Context } from "grammy";
 import { generateReply } from "../ai/gemini";
 import { buildSystemPrompt } from "../profile/voice";
+import { getContactContext } from "../profile/contacts";
 import {
   sessionKey,
   getHistory,
@@ -136,11 +137,14 @@ export function registerBusinessHandlers(bot: Bot): void {
 
     let reply: string;
     try {
-      reply = await generateReply(
-        `${COMPOSED_SYSTEM_PROMPT}\n\n${ownerContext()}`,
-        history,
-        text,
-      );
+      const systemPrompt = [
+        COMPOSED_SYSTEM_PROMPT,
+        ownerContext(),
+        getContactContext(chatId, msg.from?.username),
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+      reply = await generateReply(systemPrompt, history, text);
     } catch (err) {
       console.error(`Gemini error for chat ${chatId}:`, err);
       await notifyOwner(

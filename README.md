@@ -134,7 +134,7 @@ src/
 ## Roadmap
 
 - [x] Voice personalization via few-shot examples
-- [ ] Per-contact awareness (tone & rules per sender)
+- [x] Per-contact awareness (tone & rules per sender)
 - [ ] A personal facts / FAQ knowledge base
 - [ ] Draft-approval mode for important contacts
 

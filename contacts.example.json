@@ -1,0 +1,26 @@
+{
+  "_comment": "Copy to contacts.json (gitignored) and add the people you want handled differently. Keys are either the numeric Telegram chat_id OR a @username. 'default' applies to anyone not listed. Find a chat_id by messaging the bot from that account and checking the logs, or use @userinfobot.",
+  "default": {
+    "tone": "polite and friendly, but a little reserved — you don't recognize this person, so don't assume familiarity or share personal details."
+  },
+  "contacts": {
+    "111222333": {
+      "name": "Jamshidxon aka",
+      "relationship": "close friend",
+      "tone": "casual and warm, reply in Uzbek",
+      "notes": "owes you the project files — feel free to nudge him about it"
+    },
+    "@acme_client": {
+      "name": "Acme (client)",
+      "relationship": "client",
+      "tone": "professional and concise",
+      "notes": "never quote a price or commit to deadlines — say you'll confirm and follow up"
+    },
+    "444555666": {
+      "name": "Mum",
+      "relationship": "family",
+      "tone": "soft, affectionate, reassuring",
+      "notes": "tell her you'll call her later if she asks where you are"
+    }
+  }
+}
