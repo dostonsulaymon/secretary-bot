@@ -9,7 +9,10 @@
       "relationship": "close friend",
       "gender": "male",
       "tone": "casual and warm, reply in Uzbek",
-      "notes": "owes you the project files — feel free to nudge him about it"
+      "notes": "owes you the project files — feel free to nudge him about it",
+      "examples": [
+        { "them": "uka pul kerak edi", "me": "qancha kerak? hozir qarab ko'raman" }
+      ]
     },
     "@acme_client": {
       "name": "Acme (client)",

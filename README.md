@@ -26,6 +26,7 @@ Secretary Bot uses Telegram's [Business Mode](https://core.telegram.org/bots#bus
 
 - 🧠 **Speaks in your voice** — few-shot examples from your own messages teach it your tone, length, and style.
 - 👥 **Per-contact awareness** — set tone, gender, and rules per sender (casual with friends, "never quote a price" to clients).
+- 🤝 **Learns relationships** — paste a real chat and it captures how you talk to *that specific person* (tone + example exchanges), so replies match each relationship.
 - 🗣️ **Configure by chat** — DM the bot *"treat @ali as my client, he's a he"* or *"add a fact: I don't work weekends"* and it parses, confirms, and saves contacts **and facts** — no file editing, no restart.
 - 📇 **Personal knowledge base** — answers from a facts/FAQ file, and refuses to invent personal details it doesn't know.
 - ⌨️ **Human pacing** — bursty, bimodal timing: usually replies in seconds, but occasionally goes quiet for a minute or two like someone who stepped away, then a short "typing…" burst right before sending. Momentum-aware (rapid back-and-forth stays snappy).
@@ -91,6 +92,7 @@ Restart the bot after editing — these load once at startup.
 
 > **Tip:** You don't have to edit `contacts.json` or `facts.json` by hand. Just **DM the bot** (from your owner account) in plain language — it confirms before saving, and changes apply with no restart:
 > - **Contacts:** *"treat @ali as my client, formal, he's a he, never quote prices"* · *"who is @ali"* · *"list my contacts"* · *"forget @ali"*
+> - **Teach a relationship:** *"this is my chat with @bekzod:"* then paste a real conversation → it learns the tone and saves up to 10 example exchanges for that person
 > - **Facts:** *"add a fact: I don't work weekends"* · *"when someone asks for my email, tell them to message me here"* · *"what do you know about me"* · *"forget the fact about weekends"*
 > - **Clear (asks to confirm):** *"clear all facts"* · *"clear all contacts"* · *"reset everything"*
 >

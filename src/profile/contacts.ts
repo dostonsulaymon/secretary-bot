@@ -8,13 +8,22 @@ import { join } from "path";
  * contacts.json so the owner can edit contacts by DMing the bot — no restart.
  */
 
+export interface ContactExample {
+  them: string;
+  me: string;
+}
+
 export interface Contact {
   name?: string;
   relationship?: string;
   gender?: "male" | "female";
   tone?: string;
   notes?: string;
+  examples?: ContactExample[];
 }
+
+// Most recent example exchanges to keep per contact (rolling window).
+export const MAX_CONTACT_EXAMPLES = 10;
 
 interface ContactsFile {
   default?: { tone?: string };
@@ -55,7 +64,14 @@ function renderContact(c: Contact): string {
   if (c.gender) parts.push(`Refer to them as ${c.gender === "male" ? "he/him" : "she/her"}.`);
   if (c.tone) parts.push(`Tone: ${c.tone}.`);
   if (c.notes) parts.push(`Notes: ${c.notes}.`);
-  return parts.join(" ");
+
+  let out = parts.join(" ");
+  if (c.examples?.length) {
+    out +=
+      "\nHow you've actually talked with them before — mirror this voice and dynamic:\n" +
+      c.examples.map((e) => `Them: ${e.them}\nYou: ${e.me}`).join("\n");
+  }
+  return out;
 }
 
 /**
@@ -101,6 +117,20 @@ export function deleteContact(target: string): boolean {
   delete contacts[key];
   persist();
   return true;
+}
+
+/** Append example exchanges to a contact (creating it if new), keeping the most recent MAX. */
+export function addContactExamples(
+  target: string,
+  examples: ContactExample[],
+): { key: string; count: number } | null {
+  const key = normalizeTarget(target);
+  if (!key) return null;
+  const existing = contacts[key] ?? {};
+  const merged = [...(existing.examples ?? []), ...examples].slice(-MAX_CONTACT_EXAMPLES);
+  contacts[key] = { ...existing, examples: merged };
+  persist();
+  return { key, count: merged.length };
 }
 
 /** Remove all saved contacts (keeps the default policy). Returns how many were removed. */

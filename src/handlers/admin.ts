@@ -4,10 +4,13 @@ import {
   upsertContact,
   deleteContact,
   clearContacts,
+  addContactExamples,
   getContactByTarget,
   listContacts,
   normalizeTarget,
+  MAX_CONTACT_EXAMPLES,
   type Contact,
+  type ContactExample,
 } from "../profile/contacts";
 import {
   addFact,
@@ -78,6 +81,36 @@ Examples:
 "clear all my contacts" -> {"domain":"contact","action":"clear","target":null,"name":null,"relationship":null,"gender":null,"tone":null,"notes":null,"fact":null,"faqQuestion":null,"faqAnswer":null,"match":null}
 "reset everything" -> {"domain":"all","action":"clear","target":null,"name":null,"relationship":null,"gender":null,"tone":null,"notes":null,"fact":null,"faqQuestion":null,"faqAnswer":null,"match":null}`;
 
+const LEARN_PROMPT = `You are given a real Telegram conversation that the bot owner pasted, plus the contact's @handle.
+Infer how the OWNER talks to THIS specific person, so the bot can mimic that relationship.
+
+In the transcript, the participant whose display name matches the contact handle is "them"; the OTHER participant is the owner ("me").
+Return ONLY JSON:
+{
+  "relationship": "short phrase, e.g. close friend / younger brother / client" or null,
+  "tone": "short phrase describing how the owner talks to them, e.g. casual, warm, joking, informal Uzbek, uses emojis" or null,
+  "examples": [ { "them": "<their message>", "me": "<owner's reply, verbatim>" }, ... up to ${MAX_CONTACT_EXAMPLES} representative pairs ]
+}
+Use the owner's ACTUAL words for "me", verbatim. Pick the pairs that best capture the dynamic and voice. If you can't tell, use null / [].`;
+
+interface LearnResult {
+  relationship?: string | null;
+  tone?: string | null;
+  examples?: unknown;
+}
+
+function looksLikeTranscript(text: string): boolean {
+  const lines = text.trim().split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 4) return false;
+  const speakerish = lines.filter((l) => /\S:\s/.test(l)).length;
+  return speakerish >= Math.ceil(lines.length * 0.6);
+}
+
+function extractAtUsername(text: string): string | null {
+  const m = text.match(/@[A-Za-z][A-Za-z0-9_]{2,}/);
+  return m ? m[0] : null;
+}
+
 function isAffirmative(t: string): boolean {
   return /^(y|yes|yeah|yep|yup|sure|ok|okay|save|do it|confirm|ha|ha'?a|да|давай)\b/i.test(t.trim());
 }
@@ -128,6 +161,12 @@ export async function handleOwnerMessage(ctx: Context, ownerId: number, text: st
     pending.delete(ownerId); // anything else: treat as a new instruction
   }
 
+  // A pasted conversation → learn the relationship from it.
+  if (looksLikeTranscript(text)) {
+    await handleLearn(ctx, ownerId, text);
+    return;
+  }
+
   let cmd: ParsedCommand;
   try {
     cmd = parseJsonLoose(await generateJson(PARSER_PROMPT, text));
@@ -149,6 +188,62 @@ export async function handleOwnerMessage(ctx: Context, ownerId: number, text: st
     return;
   }
   await ctx.reply(helpText());
+}
+
+async function handleLearn(ctx: Context, ownerId: number, text: string): Promise<void> {
+  const target = extractAtUsername(text);
+  if (!target) {
+    await ctx.reply(
+      'Whose chat is this? Include their @username, e.g. "this is my chat with @bekzod:" then paste the conversation.',
+    );
+    return;
+  }
+
+  let parsed: LearnResult;
+  try {
+    const raw = await generateJson(LEARN_PROMPT, `Contact: ${target}\n\nTranscript:\n${text}`);
+    parsed = JSON.parse(raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim()) as LearnResult;
+  } catch {
+    await ctx.reply("I couldn't read that conversation. Make sure it's a normal pasted chat.");
+    return;
+  }
+
+  const examples: ContactExample[] = Array.isArray(parsed.examples)
+    ? parsed.examples
+        .filter((e): e is ContactExample => {
+          const x = e as Partial<ContactExample>;
+          return !!x && typeof x.them === "string" && typeof x.me === "string" && x.them !== "" && x.me !== "";
+        })
+        .slice(0, MAX_CONTACT_EXAMPLES)
+    : [];
+
+  const rel = parsed.relationship ?? null;
+  const tone = parsed.tone ?? null;
+
+  if (!examples.length && !rel && !tone) {
+    await ctx.reply("I couldn't pull much from that — try pasting more of the conversation.");
+    return;
+  }
+
+  pending.set(ownerId, {
+    commit: () => {
+      if (rel || tone) upsertContact(target, stripNulls({ relationship: rel, tone }));
+      const res = addContactExamples(target, examples);
+      return res
+        ? `✅ Learned ${res.count} example(s) for ${res.key}.`
+        : "⚠️ Couldn't save — I need a valid @username.";
+    },
+  });
+
+  const lines = [
+    `From your chat with ${target}, here's what I picked up:`,
+    rel ? `• Relationship: ${rel}` : null,
+    tone ? `• Tone: ${tone}` : null,
+    `• ${examples.length} example exchange(s)`,
+    "",
+    'Save this to their profile? Reply "yes".',
+  ].filter(Boolean);
+  await ctx.reply(lines.join("\n"));
 }
 
 async function handleClear(ctx: Context, ownerId: number, domain: ParsedCommand["domain"]): Promise<void> {
@@ -341,6 +436,7 @@ function helpText(): string {
     "",
     "👤 Contacts",
     '• Add / update — "treat @ali as my client, formal, he\'s a he"',
+    '• Learn from a real chat — "this is my chat with @bekzod:" then paste the conversation',
     '• Remove — "forget @ali"',
     '• View — "who is @ali" · "list my contacts"',
     "",
