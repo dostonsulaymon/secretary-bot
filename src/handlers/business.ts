@@ -37,19 +37,38 @@ function ownerContext(): string {
   return `Current date and time (${OWNER_TIMEZONE}): ${now}. Use this if asked about the time or date — do not guess.`;
 }
 
-// Natural reply pacing: show "typing…" and delay proportional to message length.
+// Natural reply pacing. Real humans are bursty: usually quick (at the phone), but
+// occasionally away for minutes. We model a mostly-quick-but-sometimes-long *silent*
+// gap, then a short "typing…" burst right before sending.
 const NATURAL_TYPING = (process.env.NATURAL_TYPING ?? "true").toLowerCase() !== "false";
+
+const PRESENT_GAP_MS: readonly [number, number] = [1000, 12000]; // "at my phone"
+const AWAY_GAP_MS: readonly [number, number] = [30000, 120000]; // "stepped away"
+const ACTIVE_WINDOW_MS = 60000; // replied recently => still in the conversation
+const AWAY_CHANCE_ACTIVE = 0.08; // small chance of a gap mid-conversation
+const AWAY_CHANCE_IDLE = 0.3; // larger chance when the chat has been quiet
+
+// Per-chat timestamp of our last reply, for conversation-momentum bias.
+const lastReplyAt = new Map<string, number>();
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Roughly how long a human would take to read the incoming message and type the reply. */
-function humanDelayMs(incoming: string, reply: string): number {
-  const reading = Math.min(incoming.length * 15, 3000); // ~time to read their message
-  const typing = Math.min(reply.length * 45, 9000); // ~time to type the reply
-  const jittered = (reading + typing) * (0.85 + Math.random() * 0.3); // ±15%
-  return Math.max(1200, Math.min(jittered, 12000));
+function randRange([min, max]: readonly [number, number]): number {
+  return min + Math.random() * (max - min);
+}
+
+/** Pick the silent "before I start typing" gap: usually short, sometimes (away) long. */
+function decideGapMs(key: string): number {
+  const sinceLast = Date.now() - (lastReplyAt.get(key) ?? 0);
+  const awayChance = sinceLast < ACTIVE_WINDOW_MS ? AWAY_CHANCE_ACTIVE : AWAY_CHANCE_IDLE;
+  return randRange(Math.random() < awayChance ? AWAY_GAP_MS : PRESENT_GAP_MS);
+}
+
+/** How long the actual "typing…" burst lasts — proportional to reply length. */
+function typingMs(reply: string): number {
+  return Math.min(Math.max(reply.length * 45, 1500), 8000);
 }
 
 /** Keep the "typing…" indicator alive for `ms` (Telegram clears it after ~5s). */
@@ -170,14 +189,7 @@ export function registerBusinessHandlers(bot: Bot): void {
     const key = sessionKey(bizConnId, chatId);
     const history = getHistory(key);
 
-    // Start the "typing…" indicator immediately so Gemini's latency reads as composing.
     const startedAt = Date.now();
-    if (NATURAL_TYPING) {
-      void ctx.api
-        .sendChatAction(chatId, "typing", { business_connection_id: bizConnId })
-        .catch(() => undefined);
-    }
-
     let reply: string;
     try {
       const systemPrompt = [
@@ -199,11 +211,13 @@ export function registerBusinessHandlers(bot: Bot): void {
       return;
     }
 
-    // Pace the reply so it doesn't land instantly — wait the human-ish remainder
-    // (Gemini's own latency already counts toward it), keeping "typing…" visible.
+    // Human pacing: a mostly-quick but sometimes long *silent* gap (you're "away" —
+    // no typing shown), then a short typing burst right before sending. Gemini's own
+    // latency counts toward the gap.
     if (NATURAL_TYPING) {
-      const remaining = humanDelayMs(text, reply) - (Date.now() - startedAt);
-      if (remaining > 0) await showTyping(ctx, chatId, bizConnId, remaining);
+      const gap = decideGapMs(key) - (Date.now() - startedAt);
+      if (gap > 0) await sleep(gap);
+      await showTyping(ctx, chatId, bizConnId, typingMs(reply));
     }
 
     try {
@@ -213,6 +227,8 @@ export function registerBusinessHandlers(bot: Bot): void {
       // Only persist once the send succeeds, so history stays consistent.
       addMessage(key, "user", text);
       addMessage(key, "model", reply);
+      lastReplyAt.set(key, Date.now()); // for conversation-momentum pacing
+
     } catch (err) {
       if (isInactiveChatError(err)) {
         console.warn(`Chat ${chatId} outside 24h activity window — skipping silently.`);
