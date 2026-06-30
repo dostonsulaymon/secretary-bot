@@ -73,6 +73,16 @@ cp .env.example .env
 | `OWNER_USER_ID` | Your numeric Telegram ID (from [@userinfobot](https://t.me/userinfobot)). Used to notify you and to filter out your own messages |
 | `SYSTEM_PROMPT` | Persona/instructions for Gemini (single line) |
 
+## 3b. Personalize the voice (optional but recommended)
+
+`SYSTEM_PROMPT` alone produces a generic assistant. To make replies sound like *you*, give it real examples:
+
+```bash
+cp voice.example.json voice.json   # voice.json is gitignored
+```
+
+Edit `voice.json` and paste **15–20 of your actual Telegram replies** (and adjust the `style` hints). Examples teach tone far better than instructions. The bot composes `SYSTEM_PROMPT + style + examples` into the system instruction at startup, so **restart after editing**. If `voice.json` is absent it falls back to `voice.example.json`.
+
 ## 4. Install & run
 
 ```bash

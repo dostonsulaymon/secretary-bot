@@ -1,5 +1,6 @@
 import { Bot, GrammyError, type Context } from "grammy";
 import { generateReply } from "../ai/gemini";
+import { buildSystemPrompt } from "../profile/voice";
 import {
   sessionKey,
   getHistory,
@@ -11,6 +12,27 @@ const OWNER_USER_ID = Number(process.env.OWNER_USER_ID);
 const SYSTEM_PROMPT =
   process.env.SYSTEM_PROMPT ??
   "You are a helpful personal assistant replying on behalf of the account owner.";
+
+// Base persona + voice examples + style hints, composed once at startup.
+const COMPOSED_SYSTEM_PROMPT = buildSystemPrompt(SYSTEM_PROMPT);
+
+// Owner's timezone — used to ground "what time/day is it" questions. Change as needed.
+const OWNER_TIMEZONE = process.env.OWNER_TIMEZONE ?? "Asia/Tashkent";
+
+/** Fresh real-world context injected per message so replies aren't time-blind. */
+function ownerContext(): string {
+  const now = new Intl.DateTimeFormat("en-GB", {
+    timeZone: OWNER_TIMEZONE,
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date());
+  return `Current date and time (${OWNER_TIMEZONE}): ${now}. Use this if asked about the time or date — do not guess.`;
+}
 
 /** What we remember about an active business connection. */
 interface ConnectionInfo {
@@ -114,7 +136,11 @@ export function registerBusinessHandlers(bot: Bot): void {
 
     let reply: string;
     try {
-      reply = await generateReply(SYSTEM_PROMPT, history, text);
+      reply = await generateReply(
+        `${COMPOSED_SYSTEM_PROMPT}\n\n${ownerContext()}`,
+        history,
+        text,
+      );
     } catch (err) {
       console.error(`Gemini error for chat ${chatId}:`, err);
       await notifyOwner(

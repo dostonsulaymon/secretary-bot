@@ -1,4 +1,8 @@
-import { GoogleGenerativeAI, type Content } from "@google/generative-ai";
+import {
+  GoogleGenerativeAI,
+  type Content,
+  type GenerationConfig,
+} from "@google/generative-ai";
 import type { Message } from "../store/sessions";
 
 const apiKey = process.env.GEMINI_API_KEY;
@@ -35,11 +39,36 @@ export async function generateReply(
   }));
   contents.push({ role: "user", parts: [{ text: userMessage }] });
 
-  const result = await model.generateContent({ contents });
-  const text = result.response.text().trim();
+  const result = await model.generateContent({
+    contents,
+    // Disable 2.5 Flash "thinking" so chain-of-thought can't leak into the reply.
+    // thinkingConfig isn't in the 0.21 SDK types yet, but the REST API honors it.
+    generationConfig: {
+      temperature: 0.85,
+      thinkingConfig: { thinkingBudget: 0 },
+    } as unknown as GenerationConfig,
+  });
+
+  const text = sanitizeReply(result.response.text());
 
   if (!text) {
     throw new Error("Gemini returned an empty response");
   }
+  return text;
+}
+
+/**
+ * Defensive cleanup in case the model still emits a reasoning preamble.
+ * Strips leading labels like "THOUGHT:", "REASONING:", "FINAL ANSWER:".
+ */
+function sanitizeReply(raw: string): string {
+  let text = raw.trim();
+  const labels = /^(thought|thinking|reasoning|analysis|final answer|answer|response)\s*:/i;
+  // Drop leading labeled lines until we hit real content.
+  const lines = text.split("\n");
+  while (lines.length > 0 && labels.test(lines[0]!.trim())) {
+    lines.shift();
+  }
+  text = lines.join("\n").trim();
   return text;
 }
