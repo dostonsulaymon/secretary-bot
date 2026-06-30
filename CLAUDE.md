@@ -16,7 +16,7 @@ There is **no test suite**. `npm run typecheck` is the correctness gate — `tsc
 
 ## What this is
 
-A Telegram **Secretary Mode** (Business Mode) bot: when someone messages the *owner's* Telegram account, Telegram forwards it to this bot, which replies on the owner's behalf using Google Gemini 2.5 Flash. Requires Telegram Premium on the owner's account to connect. Config is via `.env` (see `.env.example`); `OWNER_USER_ID` is the owner's numeric Telegram ID.
+A Telegram **Secretary Mode** (Business Mode) bot: when someone messages the *owner's* Telegram account, Telegram forwards it to this bot, which replies using Google Gemini 2.5 Flash. The persona is **first-person impersonation** — it replies *as* the owner ("tomorrow's packed"), not as a third-party assistant ("Doston is busy"); the `SYSTEM_PROMPT` and voice examples must stay first-person or the model breaks character. Requires Telegram Premium on the owner's account to connect. Config is via `.env` (see `.env.example`); `OWNER_USER_ID` is the owner's numeric Telegram ID, `OWNER_TIMEZONE` (default `Asia/Tashkent`) grounds date/time answers.
 
 ## Architecture — the non-obvious parts
 
@@ -37,11 +37,13 @@ Business messages arrive as `business_message` updates and **never** trigger the
 
 **Voice profile** (`src/profile/voice.ts`): `buildSystemPrompt(base)` composes the final Gemini system instruction from `SYSTEM_PROMPT` + style hints + few-shot examples loaded from `voice.json` (gitignored real file) or `voice.example.json` (committed fallback). Composed **once** at startup in `business.ts` (`COMPOSED_SYSTEM_PROMPT`), so editing `voice.json` requires a restart. The examples are what make replies sound like the owner rather than a generic assistant — prefer adding real example pairs over lengthening the prompt.
 
-**Contacts** (`src/profile/contacts.ts`): `getContactContext(chatId, username)` returns a per-message context line ("You are talking to X (client). Tone: … Notes: …") resolved by `chat_id` first, then `@username`, then a `default`. Loaded from `contacts.json` (gitignored) or `contacts.example.json` (fallback). This is where per-sender tone *and rules* live (e.g. "never quote a price"). The final system prompt in `business.ts` is `COMPOSED_SYSTEM_PROMPT + ownerContext() + getContactContext(...)`, joined per message.
+**Contacts** (`src/profile/contacts.ts`): `getContactContext(chatId, username)` returns a per-message context line ("You are talking to X (client). Tone: … Notes: …") resolved by `chat_id` first, then `@username`, then a `default`. Loaded from `contacts.json` (gitignored) or `contacts.example.json` (fallback). This is where per-sender tone *and rules* live (e.g. "never quote a price").
 
 **Facts / knowledge base** (`src/profile/facts.ts`): `buildFactsContext()` injects `facts` (statements the bot may rely on) + `faq` (question→answer guidance) from `facts.json` (gitignored) or `facts.example.json`. It **always** appends a hard guard against inventing personal/sensitive details (relationships, finances, address, plans) even when no facts file exists — without it the model confidently fabricates personal facts (e.g. stating a marital status). Composed once at startup as `FACTS_CONTEXT` in `business.ts`.
 
-The full per-message system prompt order is: `COMPOSED_SYSTEM_PROMPT + FACTS_CONTEXT + ownerContext() + getContactContext(...)`.
+The full per-message system prompt order is: `COMPOSED_SYSTEM_PROMPT + FACTS_CONTEXT + ownerContext() + getContactContext(...)`. The first two are static (built once at startup); `ownerContext()` (fresh date/time) and the contact lookup are recomputed per message.
+
+**Gemini wrapper** (`src/ai/gemini.ts`): `generateReply()` calls 2.5 Flash with **thinking disabled** (`thinkingConfig: { thinkingBudget: 0 }`) so its chain-of-thought can't leak into the sent message, plus `sanitizeReply()` strips any leftover `THOUGHT:`/`Answer:`-style preambles as a backstop. The voice prompt also carries a "message only" guardrail. All three exist because the model otherwise sometimes emits its reasoning as the reply text.
 
 **Session store** (`src/store/sessions.ts`): in-memory `Map` keyed by `` `${business_connection_id}:${chat_id}` ``, capped at 40 entries (20 pairs). Roles use Gemini's convention — `"user"` (incoming) / `"model"` (our reply), *not* OpenAI's `assistant`. History must start with a `user` turn; the append order (user then model) guarantees this. **Memory is process-local and wiped on restart** — swap for Redis/SQLite if persistence is needed.
 
@@ -51,6 +53,6 @@ The full per-message system prompt order is: `COMPOSED_SYSTEM_PROMPT + FACTS_CON
 
 ## Gotchas
 
-- **`@google/generative-ai` is deprecated** in favor of `@google/genai`. It still works with `gemini-2.5-flash`; if you touch `src/ai/gemini.ts`, consider migrating.
+- **`@google/generative-ai` is deprecated** in favor of `@google/genai`. It still works with `gemini-2.5-flash`; if you touch `src/ai/gemini.ts`, consider migrating. Note `thinkingConfig` isn't in this SDK's types — it's passed via an `as unknown as GenerationConfig` cast and only honored by the REST API. The newer SDK types it properly.
 - Only **text** messages are handled — photos/voice/stickers are ignored in the `business_message` handler. Extend there to support them.
 - Long polling means **one instance per token** — running two concurrently conflicts.

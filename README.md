@@ -25,6 +25,8 @@ Secretary Bot uses Telegram's [Business Mode](https://core.telegram.org/bots#bus
 ## Features
 
 - 🧠 **Speaks in your voice** — few-shot examples from your own messages teach it your tone, length, and style.
+- 👥 **Per-contact awareness** — set tone and rules per sender (casual with friends, "never quote a price" to clients).
+- 📇 **Personal knowledge base** — answers from a facts/FAQ file, and refuses to invent personal details it doesn't know.
 - 🌍 **Language-matching** — replies in whatever language the sender writes in.
 - 💬 **Per-chat memory** — keeps the last 20 message pairs of context for each conversation.
 - ⏰ **Time-aware** — grounded with your real local date/time, so it never fabricates "what time is it?"
@@ -68,13 +70,21 @@ In the Telegram app (Premium required): **Settings → Telegram Business → Cha
 
 You'll receive a confirmation DM: `✅ Secretary Mode active`.
 
-### 3. Personalize the voice (recommended)
+### 3. Personalize it (recommended)
+
+Three optional, gitignored files shape how the bot behaves. Each ships with a committed `*.example.json` template — copy and edit:
 
 ```bash
-cp voice.example.json voice.json    # voice.json is gitignored
+cp voice.example.json    voice.json      # how you talk
+cp contacts.example.json contacts.json   # who you talk to
+cp facts.example.json    facts.json      # what you know
 ```
 
-Edit `voice.json` and paste **15–20 of your actual Telegram replies**, plus adjust the `style` hints. Examples teach tone far better than instructions — this is what makes replies sound like you. Restart the bot after editing.
+- **`voice.json`** — paste **15–20 of your real Telegram replies** plus `style` hints. Examples teach tone far better than instructions; this is what makes replies sound like you.
+- **`contacts.json`** — per-sender `tone`, `relationship`, and `notes`/rules, keyed by `chat_id` or `@username`. A `default` entry covers everyone else.
+- **`facts.json`** — `facts` the bot may rely on and `faq` guidance. It answers from these and refuses to invent personal details beyond them.
+
+Restart the bot after editing — these load once at startup.
 
 ## Configuration
 
@@ -119,7 +129,9 @@ src/
 ├── ai/
 │   └── gemini.ts         # Gemini 2.5 Flash wrapper
 ├── profile/
-│   └── voice.ts          # composes persona + style + voice examples into the system prompt
+│   ├── voice.ts          # persona + style + voice examples → system prompt
+│   ├── contacts.ts       # per-sender tone & rules lookup (by chat_id / @username)
+│   └── facts.ts          # facts/FAQ knowledge base + anti-hallucination guard
 └── store/
     └── sessions.ts       # in-memory per-chat conversation memory
 ```
