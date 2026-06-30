@@ -39,15 +39,17 @@ export async function generateReply(
   }));
   contents.push({ role: "user", parts: [{ text: userMessage }] });
 
-  const result = await model.generateContent({
-    contents,
-    // Disable 2.5 Flash "thinking" so chain-of-thought can't leak into the reply.
-    // thinkingConfig isn't in the 0.21 SDK types yet, but the REST API honors it.
-    generationConfig: {
-      temperature: 0.85,
-      thinkingConfig: { thinkingBudget: 0 },
-    } as unknown as GenerationConfig,
-  });
+  const result = await withRetry(() =>
+    model.generateContent({
+      contents,
+      // Disable 2.5 Flash "thinking" so chain-of-thought can't leak into the reply.
+      // thinkingConfig isn't in the 0.21 SDK types yet, but the REST API honors it.
+      generationConfig: {
+        temperature: 0.85,
+        thinkingConfig: { thinkingBudget: 0 },
+      } as unknown as GenerationConfig,
+    }),
+  );
 
   const text = sanitizeReply(result.response.text());
 
@@ -55,6 +57,30 @@ export async function generateReply(
     throw new Error("Gemini returned an empty response");
   }
   return text;
+}
+
+// Transient Gemini failures worth retrying: rate limits, overload, gateway/availability blips.
+const RETRYABLE = /\b(429|500|502|503|504)\b|overloaded|unavailable|timeout/i;
+
+/**
+ * Retry a Gemini call on transient errors with exponential backoff + jitter.
+ * Non-transient errors (e.g. bad API key, safety blocks) fail fast.
+ */
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const message = err instanceof Error ? err.message : String(err);
+      if (i === attempts - 1 || !RETRYABLE.test(message)) throw err;
+      const delayMs = 500 * 2 ** i + Math.random() * 250;
+      console.warn(`Gemini transient error (attempt ${i + 1}/${attempts}), retrying in ${Math.round(delayMs)}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr;
 }
 
 /**

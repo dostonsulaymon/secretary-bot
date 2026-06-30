@@ -51,7 +51,7 @@ The full per-message system prompt order is: `COMPOSED_SYSTEM_PROMPT + FACTS_CON
 
 **Connection lifecycle** (`business_connection` handler): stores/clears `ConnectionInfo` in a module-level map and DMs the owner on connect/disconnect. `can_reply` is read defensively via `extractCanReply()` because Bot API 9.0 moved it from the connection root into `rights.can_reply` — read both to survive either grammY/types version.
 
-**Error handling deliberately stays silent in two cases:** `BUSINESS_CHAT_INACTIVE` (the message is outside Telegram's 24h reply window) is skipped without notice; Gemini failures notify the owner but send *no* reply rather than a broken one. Never replace these with a fallback/placeholder message to the contact.
+**Error handling deliberately stays silent in two cases:** `BUSINESS_CHAT_INACTIVE` (the message is outside Telegram's 24h reply window) is skipped without notice; Gemini failures notify the owner but send *no* reply rather than a broken one. Never replace these with a fallback/placeholder message to the contact. Transient Gemini errors (429/5xx/"overloaded") are retried with exponential backoff via `withRetry()` in `gemini.ts` before the failure surfaces — so a brief 503 no longer drops a reply.
 
 ## Gotchas
 
