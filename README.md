@@ -92,6 +92,7 @@ Restart the bot after editing — these load once at startup.
 > **Tip:** You don't have to edit `contacts.json` or `facts.json` by hand. Just **DM the bot** (from your owner account) in plain language — it confirms before saving, and changes apply with no restart:
 > - **Contacts:** *"treat @ali as my client, formal, he's a he, never quote prices"* · *"who is @ali"* · *"list my contacts"* · *"forget @ali"*
 > - **Facts:** *"add a fact: I don't work weekends"* · *"when someone asks for my email, tell them to message me here"* · *"what do you know about me"* · *"forget the fact about weekends"*
+> - **Clear (asks to confirm):** *"clear all facts"* · *"clear all contacts"* · *"reset everything"*
 >
 > To tag someone without a public `@username`, use their numeric `chat_id` (the bot logs each sender's id when they message you).
 

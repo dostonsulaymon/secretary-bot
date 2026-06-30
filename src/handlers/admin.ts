@@ -3,6 +3,7 @@ import { generateJson } from "../ai/gemini";
 import {
   upsertContact,
   deleteContact,
+  clearContacts,
   getContactByTarget,
   listContacts,
   normalizeTarget,
@@ -12,6 +13,7 @@ import {
   addFact,
   addFaq,
   removeKnowledge,
+  clearKnowledge,
   listFacts,
   listFaq,
 } from "../profile/facts";
@@ -25,8 +27,8 @@ import {
  */
 
 interface ParsedCommand {
-  domain: "contact" | "knowledge" | "unknown";
-  action: "set" | "add" | "get" | "delete" | "list" | "unknown";
+  domain: "contact" | "knowledge" | "all" | "unknown";
+  action: "set" | "add" | "get" | "delete" | "list" | "clear" | "unknown";
   // contact
   target?: string | null;
   name?: string | null;
@@ -51,8 +53,8 @@ const PARSER_PROMPT = `You parse the bot owner's instruction for managing their 
 Return ONLY a JSON object with keys:
 { "domain", "action", "target", "name", "relationship", "gender", "tone", "notes", "fact", "faqQuestion", "faqAnswer", "match" }
 
-- domain: "contact" (managing a person) | "knowledge" (managing facts/FAQ about the owner) | "unknown".
-- action: "set"/"add" to create or update, "get" to show one, "delete" to remove, "list" to show all, "unknown" if unclear.
+- domain: "contact" (managing a person) | "knowledge" (managing facts/FAQ about the owner) | "all" (both, for a full reset) | "unknown".
+- action: "set"/"add" to create or update, "get" to show one, "delete" to remove one, "list" to show all, "clear" to wipe everything in that domain, "unknown" if unclear.
 
 CONTACT fields (domain "contact"):
 - target: the person's @username or numeric id; if only a name is given, use the name; else null.
@@ -71,7 +73,10 @@ Examples:
 "add a fact: I don't work weekends" -> {"domain":"knowledge","action":"add","target":null,"name":null,"relationship":null,"gender":null,"tone":null,"notes":null,"fact":"Doston doesn't work weekends","faqQuestion":null,"faqAnswer":null,"match":null}
 "when someone asks for my email, tell them to message me here" -> {"domain":"knowledge","action":"add","target":null,"name":null,"relationship":null,"gender":null,"tone":null,"notes":null,"fact":null,"faqQuestion":"what's your email?","faqAnswer":"Tell them to message you here on Telegram.","match":null}
 "forget the fact about weekends" -> {"domain":"knowledge","action":"delete","target":null,"name":null,"relationship":null,"gender":null,"tone":null,"notes":null,"fact":null,"faqQuestion":null,"faqAnswer":null,"match":"weekend"}
-"what do you know about me" -> {"domain":"knowledge","action":"list","target":null,"name":null,"relationship":null,"gender":null,"tone":null,"notes":null,"fact":null,"faqQuestion":null,"faqAnswer":null,"match":null}`;
+"what do you know about me" -> {"domain":"knowledge","action":"list","target":null,"name":null,"relationship":null,"gender":null,"tone":null,"notes":null,"fact":null,"faqQuestion":null,"faqAnswer":null,"match":null}
+"clear all my facts" -> {"domain":"knowledge","action":"clear","target":null,"name":null,"relationship":null,"gender":null,"tone":null,"notes":null,"fact":null,"faqQuestion":null,"faqAnswer":null,"match":null}
+"clear all my contacts" -> {"domain":"contact","action":"clear","target":null,"name":null,"relationship":null,"gender":null,"tone":null,"notes":null,"fact":null,"faqQuestion":null,"faqAnswer":null,"match":null}
+"reset everything" -> {"domain":"all","action":"clear","target":null,"name":null,"relationship":null,"gender":null,"tone":null,"notes":null,"fact":null,"faqQuestion":null,"faqAnswer":null,"match":null}`;
 
 function isAffirmative(t: string): boolean {
   return /^(y|yes|yeah|yep|yup|sure|ok|okay|save|do it|confirm|ha|ha'?a|да|давай)\b/i.test(t.trim());
@@ -124,6 +129,10 @@ export async function handleOwnerMessage(ctx: Context, ownerId: number, text: st
     return;
   }
 
+  if (cmd.action === "clear") {
+    await handleClear(ctx, ownerId, cmd.domain);
+    return;
+  }
   if (cmd.domain === "knowledge") {
     await handleKnowledge(ctx, ownerId, cmd);
     return;
@@ -133,6 +142,56 @@ export async function handleOwnerMessage(ctx: Context, ownerId: number, text: st
     return;
   }
   await ctx.reply(helpText());
+}
+
+async function handleClear(ctx: Context, ownerId: number, domain: ParsedCommand["domain"]): Promise<void> {
+  const knowledgeN = listFacts().length + listFaq().length;
+  const contactsN = listContacts().length;
+
+  if (domain === "knowledge") {
+    if (!knowledgeN) {
+      await ctx.reply("No facts or FAQ to clear.");
+      return;
+    }
+    pending.set(ownerId, {
+      commit: () => {
+        const c = clearKnowledge();
+        return `🗑️ Cleared ${c.facts} fact(s) and ${c.faq} FAQ.`;
+      },
+    });
+    await ctx.reply(`⚠️ This permanently deletes all ${knowledgeN} fact(s)/FAQ. Reply "yes" to confirm.`);
+    return;
+  }
+
+  if (domain === "contact") {
+    if (!contactsN) {
+      await ctx.reply("No contacts to clear.");
+      return;
+    }
+    pending.set(ownerId, { commit: () => `🗑️ Cleared ${clearContacts()} contact(s).` });
+    await ctx.reply(`⚠️ This permanently deletes all ${contactsN} contact(s). Reply "yes" to confirm.`);
+    return;
+  }
+
+  if (domain === "all") {
+    if (!knowledgeN && !contactsN) {
+      await ctx.reply("Nothing to clear.");
+      return;
+    }
+    pending.set(ownerId, {
+      commit: () => {
+        const c = clearKnowledge();
+        const n = clearContacts();
+        return `🗑️ Cleared ${n} contact(s), ${c.facts} fact(s), and ${c.faq} FAQ.`;
+      },
+    });
+    await ctx.reply(
+      `⚠️ This permanently deletes ALL ${contactsN} contact(s) and ${knowledgeN} fact(s)/FAQ. Reply "yes" to confirm.`,
+    );
+    return;
+  }
+
+  await ctx.reply('Clear what? Try "clear all facts", "clear all contacts", or "reset everything".');
 }
 
 async function handleKnowledge(ctx: Context, ownerId: number, cmd: ParsedCommand): Promise<void> {
@@ -276,6 +335,7 @@ function helpText(): string {
     '• "who is @ali" · "list my contacts" · "forget @ali"\n' +
     '• "add a fact: I don\'t work weekends"\n' +
     '• "when someone asks for my email, tell them to message me here"\n' +
-    '• "what do you know about me" · "forget the fact about weekends"'
+    '• "what do you know about me" · "forget the fact about weekends"\n' +
+    '• "clear all facts" · "clear all contacts" · "reset everything"'
   );
 }

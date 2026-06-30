@@ -103,6 +103,14 @@ export function deleteContact(target: string): boolean {
   return true;
 }
 
+/** Remove all saved contacts (keeps the default policy). Returns how many were removed. */
+export function clearContacts(): number {
+  const n = Object.keys(contacts).length;
+  for (const key of Object.keys(contacts)) delete contacts[key];
+  persist();
+  return n;
+}
+
 function stripEmpty(obj: Contact): Contact {
   return Object.fromEntries(
     Object.entries(obj).filter(([, v]) => v !== undefined && v !== null && v !== ""),

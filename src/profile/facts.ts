@@ -111,6 +111,15 @@ export function removeKnowledge(match: string): string[] {
   return removed;
 }
 
+/** Wipe all facts and FAQ. Returns how many of each were removed. */
+export function clearKnowledge(): { facts: number; faq: number } {
+  const counts = { facts: facts.length, faq: faq.length };
+  facts.length = 0;
+  faq.length = 0;
+  persist();
+  return counts;
+}
+
 function persist(): void {
   writeFileSync(FACTS_PATH, JSON.stringify({ facts, faq }, null, 2) + "\n", "utf8");
 }
