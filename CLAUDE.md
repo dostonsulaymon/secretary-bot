@@ -22,7 +22,7 @@ A Telegram **Secretary Mode** (Business Mode) bot: when someone messages the *ow
 
 **Two separate update streams that must not be confused:**
 - `business_message` → the auto-responder (`src/handlers/business.ts`). Messages *to the owner* in managed chats.
-- normal `message` → a static canned reply (`src/handlers/direct.ts`). Messages sent *directly to the bot*.
+- normal `message` → `src/handlers/direct.ts`. Messages sent *directly to the bot*: from the owner these route to the admin control panel (`admin.ts`); from anyone else they get a static canned reply.
 
 Business messages arrive as `business_message` updates and **never** trigger the `message` handler, so the two handlers don't overlap.
 
@@ -37,7 +37,9 @@ Business messages arrive as `business_message` updates and **never** trigger the
 
 **Voice profile** (`src/profile/voice.ts`): `buildSystemPrompt(base)` composes the final Gemini system instruction from `SYSTEM_PROMPT` + style hints + few-shot examples loaded from `voice.json` (gitignored real file) or `voice.example.json` (committed fallback). Composed **once** at startup in `business.ts` (`COMPOSED_SYSTEM_PROMPT`), so editing `voice.json` requires a restart. The examples are what make replies sound like the owner rather than a generic assistant — prefer adding real example pairs over lengthening the prompt.
 
-**Contacts** (`src/profile/contacts.ts`): `getContactContext(chatId, username)` returns a per-message context line ("You are talking to X (client). Tone: … Notes: …") resolved by `chat_id` first, then `@username`, then a `default`. Loaded from `contacts.json` (gitignored) or `contacts.example.json` (fallback). This is where per-sender tone *and rules* live (e.g. "never quote a price").
+**Contacts** (`src/profile/contacts.ts`): `getContactContext(chatId, username)` returns a per-message context line ("You are talking to X (client). Tone: … Notes: …") resolved by `chat_id` first, then `@username`, then a `default`. Loaded from `contacts.json` (gitignored) or `contacts.example.json` (fallback) into an in-memory record that is the **source of truth**; mutations (`upsertContact`/`deleteContact`) persist back to `contacts.json` via `writeFileSync`, so owner edits take effect with no restart. Contacts carry an optional `gender` that becomes he/him or she/her pronoun guidance in the prompt. This is where per-sender tone *and rules* live (e.g. "never quote a price").
+
+**Owner control panel** (`src/handlers/admin.ts`): when the owner DMs the bot, `handleOwnerMessage()` parses the message with `generateJson()` (Gemini in JSON mode) into a `{action, target, ...}` command — set/get/delete/list. A `set` is staged in a per-owner `pending` map and only written after an affirmative reply ("yes"); get/list/delete act immediately. Targets resolve through `normalizeTarget()` to a `@username` (lowercased) or numeric chat_id key. `business.ts` logs each incoming sender's id/username so the owner can reference people who have no public username.
 
 **Facts / knowledge base** (`src/profile/facts.ts`): `buildFactsContext()` injects `facts` (statements the bot may rely on) + `faq` (question→answer guidance) from `facts.json` (gitignored) or `facts.example.json`. It **always** appends a hard guard against inventing personal/sensitive details (relationships, finances, address, plans) even when no facts file exists — without it the model confidently fabricates personal facts (e.g. stating a marital status). Composed once at startup as `FACTS_CONTEXT` in `business.ts`.
 

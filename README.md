@@ -25,7 +25,8 @@ Secretary Bot uses Telegram's [Business Mode](https://core.telegram.org/bots#bus
 ## Features
 
 - 🧠 **Speaks in your voice** — few-shot examples from your own messages teach it your tone, length, and style.
-- 👥 **Per-contact awareness** — set tone and rules per sender (casual with friends, "never quote a price" to clients).
+- 👥 **Per-contact awareness** — set tone, gender, and rules per sender (casual with friends, "never quote a price" to clients).
+- 🗣️ **Configure by chat** — DM the bot *"treat @ali as my client, formal, he's a he"* and it parses, confirms, and saves the contact — no file editing, no restart.
 - 📇 **Personal knowledge base** — answers from a facts/FAQ file, and refuses to invent personal details it doesn't know.
 - 🌍 **Language-matching** — replies in whatever language the sender writes in.
 - 💬 **Per-chat memory** — keeps the last 20 message pairs of context for each conversation.
@@ -87,6 +88,12 @@ cp facts.example.json    facts.json      # what you know
 
 Restart the bot after editing — these load once at startup.
 
+> **Tip:** You don't have to edit `contacts.json` by hand. Just **DM the bot** (from your owner account) in plain language:
+> - *"treat @ali as my client, keep it formal, he's a he, never quote prices"* → it shows a card and saves on your **"yes"**
+> - *"my sister @dilnoza, be warm with her"*, *"who is @ali"*, *"list my contacts"*, *"forget @ali"*
+>
+> Contacts saved this way persist immediately — no restart. To tag someone without a public `@username`, use their numeric `chat_id` (the bot logs each sender's id when they message you).
+
 ## Configuration
 
 All configuration lives in `.env` (see [`.env.example`](.env.example)):
@@ -126,7 +133,8 @@ src/
 ├── index.ts              # entry point, bot setup, allowed_updates
 ├── handlers/
 │   ├── business.ts       # business_connection + business_message (the core auto-responder)
-│   └── direct.ts         # canned reply for direct messages to the bot
+│   ├── direct.ts         # routes owner DMs to admin; canned reply for everyone else
+│   └── admin.ts          # owner control panel — manage contacts by chatting with the bot
 ├── ai/
 │   └── gemini.ts         # Gemini 2.5 Flash wrapper
 ├── profile/
@@ -149,6 +157,7 @@ src/
 - [x] Voice personalization via few-shot examples
 - [x] Per-contact awareness (tone & rules per sender)
 - [x] A personal facts / FAQ knowledge base
+- [x] Interactive owner control — manage contacts by DMing the bot
 - [ ] Draft-approval mode for important contacts
 
 ## License

@@ -58,6 +58,24 @@ export async function generateReply(
 }
 
 /**
+ * Structured-output call for internal tasks (e.g. parsing the owner's commands).
+ * Forces JSON output and disables thinking. Returns the raw JSON string.
+ */
+export async function generateJson(systemPrompt: string, userMessage: string): Promise<string> {
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    systemInstruction: systemPrompt,
+    generationConfig: {
+      temperature: 0,
+      responseMimeType: "application/json",
+      thinkingConfig: { thinkingBudget: 0 },
+    } as unknown as GenerationConfig,
+  });
+  const result = await model.generateContent(userMessage);
+  return result.response.text();
+}
+
+/**
  * Defensive cleanup in case the model still emits a reasoning preamble.
  * Strips leading labels like "THOUGHT:", "REASONING:", "FINAL ANSWER:".
  */

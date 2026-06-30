@@ -7,6 +7,7 @@
     "111222333": {
       "name": "Jamshidxon aka",
       "relationship": "close friend",
+      "gender": "male",
       "tone": "casual and warm, reply in Uzbek",
       "notes": "owes you the project files — feel free to nudge him about it"
     },
@@ -19,6 +20,7 @@
     "444555666": {
       "name": "Mum",
       "relationship": "family",
+      "gender": "female",
       "tone": "soft, affectionate, reassuring",
       "notes": "tell her you'll call her later if she asks where you are"
     }

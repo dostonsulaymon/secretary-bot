@@ -123,6 +123,11 @@ export function registerBusinessHandlers(bot: Bot): void {
 
     if (!bizConnId) return;
 
+    // Log sender identity so the owner can reference them in contacts (chat_id / @username).
+    console.log(
+      `business_message from id=${fromId}${msg.from?.username ? ` @${msg.from.username}` : ""} in chat ${chatId}`,
+    );
+
     // Only handle plain text for now.
     if (!text) return;
 
