@@ -47,6 +47,7 @@ The bot subscribes to Telegram's `business_connection` and `business_message` up
 
 - **Node.js ≥ 18**
 - A **Telegram bot token** — from [@BotFather](https://t.me/BotFather)
+- **Business (Secretary) Mode enabled** on that bot in BotFather — see [step 1](#1-enable-business-mode-on-the-bot). Without it, Telegram won't deliver the `business_message` updates the bot depends on, and nothing will work.
 - A **Google Gemini API key** — from [Google AI Studio](https://aistudio.google.com/apikey)
 - **Telegram Premium** on the account you want the bot to manage
 
