@@ -105,6 +105,13 @@ function stripNulls(obj: Record<string, unknown>): Contact {
 }
 
 export async function handleOwnerMessage(ctx: Context, ownerId: number, text: string): Promise<void> {
+  // Slash commands are handled directly — no need to spend a Gemini call parsing them.
+  if (/^\/(start|help|commands)\b/i.test(text.trim())) {
+    pending.delete(ownerId);
+    await ctx.reply(helpText());
+    return;
+  }
+
   // Resolve a pending "save this?" first.
   const p = pending.get(ownerId);
   if (p) {
@@ -329,13 +336,21 @@ async function handleContact(ctx: Context, ownerId: number, cmd: ParsedCommand):
 }
 
 function helpText(): string {
-  return (
-    "I manage your contacts and the facts I know about you. Try:\n" +
-    '• "treat @ali as my client, formal, he\'s a he"\n' +
-    '• "who is @ali" · "list my contacts" · "forget @ali"\n' +
-    '• "add a fact: I don\'t work weekends"\n' +
-    '• "when someone asks for my email, tell them to message me here"\n' +
-    '• "what do you know about me" · "forget the fact about weekends"\n' +
-    '• "clear all facts" · "clear all contacts" · "reset everything"'
-  );
+  return [
+    "I'm Donna — I manage your contacts and the facts I know about you. Just tell me in plain words:",
+    "",
+    "👤 Contacts",
+    '• Add / update — "treat @ali as my client, formal, he\'s a he"',
+    '• Remove — "forget @ali"',
+    '• View — "who is @ali" · "list my contacts"',
+    "",
+    "📇 Facts about you",
+    '• Add a fact — "add a fact: I don\'t work weekends"',
+    '• Add a Q&A — "when someone asks for my email, tell them to message me here"',
+    '• Remove — "forget the fact about weekends"',
+    '• View — "what do you know about me"',
+    "",
+    "🧹 Clear (asks to confirm first)",
+    '• "clear all facts" · "clear all contacts" · "reset everything"',
+  ].join("\n");
 }
