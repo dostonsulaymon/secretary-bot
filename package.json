@@ -1,0 +1,31 @@
+{
+  "name": "secretary-bot",
+  "version": "1.0.0",
+  "description": "Telegram Secretary Mode bot — AI auto-responder using grammY + Google Gemini 2.5 Flash",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "telegram",
+    "grammy",
+    "gemini",
+    "secretary-mode",
+    "business-mode"
+  ],
+  "author": "Doston Sulaymon",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "dotenv": "^16.4.5",
+    "grammy": "^1.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.0"
+  }
+}
