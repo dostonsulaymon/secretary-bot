@@ -29,7 +29,7 @@ Secretary Bot uses Telegram's [Business Mode](https://core.telegram.org/bots#bus
 - 🤝 **Learns relationships** — paste a real chat and it captures how you talk to *that specific person* (tone + example exchanges), so replies match each relationship.
 - 🗣️ **Configure by chat** — DM the bot *"treat @ali as my client, he's a he"* or *"add a fact: I don't work weekends"* and it parses, confirms, and saves contacts **and facts** — no file editing, no restart.
 - 📇 **Personal knowledge base** — answers from a facts/FAQ file, and refuses to invent personal details it doesn't know.
-- ⌨️ **Human pacing** — bursty, bimodal timing: usually replies in seconds, occasionally goes quiet for up to ~30s like someone who stepped away, then a short "typing…" burst right before sending. Momentum-aware (rapid back-and-forth stays snappy), total delay capped at 30s.
+- ⌨️ **Human pacing** — bursty, bimodal timing: usually replies in seconds, but occasionally goes quiet for a minute or two like someone who stepped away, then a short "typing…" burst right before sending. Momentum-aware (rapid back-and-forth stays snappy).
 - 🌍 **Language-matching** — replies in whatever language the sender writes in.
 - 💬 **Per-chat memory** — keeps the last 20 message pairs of context for each conversation.
 - ⏰ **Time-aware** — grounded with your real local date/time, so it never fabricates "what time is it?"
