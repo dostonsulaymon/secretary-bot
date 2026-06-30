@@ -39,6 +39,10 @@ Business messages arrive as `business_message` updates and **never** trigger the
 
 **Contacts** (`src/profile/contacts.ts`): `getContactContext(chatId, username)` returns a per-message context line ("You are talking to X (client). Tone: … Notes: …") resolved by `chat_id` first, then `@username`, then a `default`. Loaded from `contacts.json` (gitignored) or `contacts.example.json` (fallback). This is where per-sender tone *and rules* live (e.g. "never quote a price"). The final system prompt in `business.ts` is `COMPOSED_SYSTEM_PROMPT + ownerContext() + getContactContext(...)`, joined per message.
 
+**Facts / knowledge base** (`src/profile/facts.ts`): `buildFactsContext()` injects `facts` (statements the bot may rely on) + `faq` (question→answer guidance) from `facts.json` (gitignored) or `facts.example.json`. It **always** appends a hard guard against inventing personal/sensitive details (relationships, finances, address, plans) even when no facts file exists — without it the model confidently fabricates personal facts (e.g. stating a marital status). Composed once at startup as `FACTS_CONTEXT` in `business.ts`.
+
+The full per-message system prompt order is: `COMPOSED_SYSTEM_PROMPT + FACTS_CONTEXT + ownerContext() + getContactContext(...)`.
+
 **Session store** (`src/store/sessions.ts`): in-memory `Map` keyed by `` `${business_connection_id}:${chat_id}` ``, capped at 40 entries (20 pairs). Roles use Gemini's convention — `"user"` (incoming) / `"model"` (our reply), *not* OpenAI's `assistant`. History must start with a `user` turn; the append order (user then model) guarantees this. **Memory is process-local and wiped on restart** — swap for Redis/SQLite if persistence is needed.
 
 **Connection lifecycle** (`business_connection` handler): stores/clears `ConnectionInfo` in a module-level map and DMs the owner on connect/disconnect. `can_reply` is read defensively via `extractCanReply()` because Bot API 9.0 moved it from the connection root into `rights.can_reply` — read both to survive either grammY/types version.

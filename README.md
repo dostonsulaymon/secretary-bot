@@ -135,7 +135,7 @@ src/
 
 - [x] Voice personalization via few-shot examples
 - [x] Per-contact awareness (tone & rules per sender)
-- [ ] A personal facts / FAQ knowledge base
+- [x] A personal facts / FAQ knowledge base
 - [ ] Draft-approval mode for important contacts
 
 ## License

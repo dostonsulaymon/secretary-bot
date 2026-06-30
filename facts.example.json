@@ -1,0 +1,14 @@
+{
+  "_comment": "Copy to facts.json (gitignored) and fill with real facts about you. 'facts' are statements the bot may rely on to answer questions. 'faq' maps common questions to how you'd like them answered. The bot is told never to invent anything beyond these — so the more you add, the more it can handle without deflecting.",
+  "facts": [
+    "You're a software engineer based in Tashkent, Uzbekistan.",
+    "You don't take meetings or calls on Fridays.",
+    "Your usual working hours are around 9am to 7pm.",
+    "You prefer Telegram over email for quick messages."
+  ],
+  "faq": [
+    { "q": "are you free this Friday?", "a": "No — you keep Fridays clear of meetings. Politely offer another day instead." },
+    { "q": "what do you do for work?", "a": "You're a software engineer." },
+    { "q": "can you share your email?", "a": "Only if the person seems legitimate; otherwise suggest they keep talking here on Telegram." }
+  ]
+}

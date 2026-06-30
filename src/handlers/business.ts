@@ -2,6 +2,7 @@ import { Bot, GrammyError, type Context } from "grammy";
 import { generateReply } from "../ai/gemini";
 import { buildSystemPrompt } from "../profile/voice";
 import { getContactContext } from "../profile/contacts";
+import { buildFactsContext } from "../profile/facts";
 import {
   sessionKey,
   getHistory,
@@ -16,6 +17,9 @@ const SYSTEM_PROMPT =
 
 // Base persona + voice examples + style hints, composed once at startup.
 const COMPOSED_SYSTEM_PROMPT = buildSystemPrompt(SYSTEM_PROMPT);
+
+// Personal knowledge base (facts + FAQ), also static — composed once.
+const FACTS_CONTEXT = buildFactsContext();
 
 // Owner's timezone — used to ground "what time/day is it" questions. Change as needed.
 const OWNER_TIMEZONE = process.env.OWNER_TIMEZONE ?? "Asia/Tashkent";
@@ -139,6 +143,7 @@ export function registerBusinessHandlers(bot: Bot): void {
     try {
       const systemPrompt = [
         COMPOSED_SYSTEM_PROMPT,
+        FACTS_CONTEXT,
         ownerContext(),
         getContactContext(chatId, msg.from?.username),
       ]
