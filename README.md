@@ -26,7 +26,7 @@ Secretary Bot uses Telegram's [Business Mode](https://core.telegram.org/bots#bus
 
 - 🧠 **Speaks in your voice** — few-shot examples from your own messages teach it your tone, length, and style.
 - 👥 **Per-contact awareness** — set tone, gender, and rules per sender (casual with friends, "never quote a price" to clients).
-- 🗣️ **Configure by chat** — DM the bot *"treat @ali as my client, formal, he's a he"* and it parses, confirms, and saves the contact — no file editing, no restart.
+- 🗣️ **Configure by chat** — DM the bot *"treat @ali as my client, he's a he"* or *"add a fact: I don't work weekends"* and it parses, confirms, and saves contacts **and facts** — no file editing, no restart.
 - 📇 **Personal knowledge base** — answers from a facts/FAQ file, and refuses to invent personal details it doesn't know.
 - ⌨️ **Natural pacing** — shows a "typing…" indicator and delays replies proportional to length (with jitter), so it never answers at robot speed.
 - 🌍 **Language-matching** — replies in whatever language the sender writes in.
@@ -89,11 +89,11 @@ cp facts.example.json    facts.json      # what you know
 
 Restart the bot after editing — these load once at startup.
 
-> **Tip:** You don't have to edit `contacts.json` by hand. Just **DM the bot** (from your owner account) in plain language:
-> - *"treat @ali as my client, keep it formal, he's a he, never quote prices"* → it shows a card and saves on your **"yes"**
-> - *"my sister @dilnoza, be warm with her"*, *"who is @ali"*, *"list my contacts"*, *"forget @ali"*
+> **Tip:** You don't have to edit `contacts.json` or `facts.json` by hand. Just **DM the bot** (from your owner account) in plain language — it confirms before saving, and changes apply with no restart:
+> - **Contacts:** *"treat @ali as my client, formal, he's a he, never quote prices"* · *"who is @ali"* · *"list my contacts"* · *"forget @ali"*
+> - **Facts:** *"add a fact: I don't work weekends"* · *"when someone asks for my email, tell them to message me here"* · *"what do you know about me"* · *"forget the fact about weekends"*
 >
-> Contacts saved this way persist immediately — no restart. To tag someone without a public `@username`, use their numeric `chat_id` (the bot logs each sender's id when they message you).
+> To tag someone without a public `@username`, use their numeric `chat_id` (the bot logs each sender's id when they message you).
 
 ## Configuration
 

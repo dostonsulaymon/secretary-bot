@@ -1,13 +1,14 @@
-import { readFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 
 /**
  * Personal knowledge base: facts the bot may rely on, plus canned guidance for
- * common questions. Lets it actually answer instead of deflecting everything.
- * Loaded once at startup from facts.json (falls back to facts.example.json).
+ * common questions. Loaded at startup from facts.json (falls back to
+ * facts.example.json) into in-memory arrays that are the source of truth;
+ * mutations persist back to facts.json so the owner can edit by DMing the bot.
  */
 
-interface FaqEntry {
+export interface FaqEntry {
   q: string;
   a: string;
 }
@@ -16,6 +17,8 @@ interface FactsFile {
   facts?: string[];
   faq?: FaqEntry[];
 }
+
+const FACTS_PATH = join(process.cwd(), "facts.json");
 
 function loadFactsFile(): FactsFile {
   for (const name of ["facts.json", "facts.example.json"]) {
@@ -26,27 +29,29 @@ function loadFactsFile(): FactsFile {
       // not found / unreadable — try the next candidate
     }
   }
-  console.warn("No facts.json or facts.example.json found — the bot will deflect factual questions.");
+  console.warn("No facts file found — the bot will deflect factual questions.");
   return {};
 }
 
 const file = loadFactsFile();
+const facts: string[] = file.facts ?? [];
+const faq: FaqEntry[] = file.faq ?? [];
 
-/** Compose the knowledge-base section of the system prompt (built once). */
+/** Compose the knowledge-base section of the system prompt (call per message — facts can change at runtime). */
 export function buildFactsContext(): string {
   const sections: string[] = [];
 
-  if (file.facts?.length) {
+  if (facts.length) {
     sections.push(
       "Facts about you — you may use these to answer, but never state anything beyond them as fact:\n" +
-        file.facts.map((f) => `- ${f}`).join("\n"),
+        facts.map((f) => `- ${f}`).join("\n"),
     );
   }
 
-  if (file.faq?.length) {
+  if (faq.length) {
     sections.push(
       "Guidance for common questions:\n" +
-        file.faq.map((e) => `- If asked "${e.q}" → ${e.a}`).join("\n"),
+        faq.map((e) => `- If asked "${e.q}" → ${e.a}`).join("\n"),
     );
   }
 
@@ -59,4 +64,53 @@ export function buildFactsContext(): string {
   );
 
   return sections.join("\n\n");
+}
+
+// --- Owner-facing mutations (persist to disk) ---
+
+export function listFacts(): string[] {
+  return facts;
+}
+
+export function listFaq(): FaqEntry[] {
+  return faq;
+}
+
+export function addFact(text: string): void {
+  facts.push(text.trim());
+  persist();
+}
+
+export function addFaq(question: string, answer: string): void {
+  faq.push({ q: question.trim(), a: answer.trim() });
+  persist();
+}
+
+/** Remove any fact or FAQ entry whose text contains `match` (case-insensitive). Returns what was removed. */
+export function removeKnowledge(match: string): string[] {
+  const needle = match.trim().toLowerCase();
+  if (!needle) return [];
+  const removed: string[] = [];
+
+  for (let i = facts.length - 1; i >= 0; i--) {
+    const f = facts[i];
+    if (f && f.toLowerCase().includes(needle)) {
+      removed.push(f);
+      facts.splice(i, 1);
+    }
+  }
+  for (let i = faq.length - 1; i >= 0; i--) {
+    const e = faq[i];
+    if (e && (e.q.toLowerCase().includes(needle) || e.a.toLowerCase().includes(needle))) {
+      removed.push(`FAQ: "${e.q}"`);
+      faq.splice(i, 1);
+    }
+  }
+
+  if (removed.length) persist();
+  return removed;
+}
+
+function persist(): void {
+  writeFileSync(FACTS_PATH, JSON.stringify({ facts, faq }, null, 2) + "\n", "utf8");
 }

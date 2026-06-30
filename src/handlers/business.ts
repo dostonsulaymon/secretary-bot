@@ -16,10 +16,8 @@ const SYSTEM_PROMPT =
   "You are a helpful personal assistant replying on behalf of the account owner.";
 
 // Base persona + voice examples + style hints, composed once at startup.
+// (Facts are composed per message via buildFactsContext() so chat edits apply live.)
 const COMPOSED_SYSTEM_PROMPT = buildSystemPrompt(SYSTEM_PROMPT);
-
-// Personal knowledge base (facts + FAQ), also static — composed once.
-const FACTS_CONTEXT = buildFactsContext();
 
 // Owner's timezone — used to ground "what time/day is it" questions. Change as needed.
 const OWNER_TIMEZONE = process.env.OWNER_TIMEZONE ?? "Asia/Tashkent";
@@ -184,7 +182,7 @@ export function registerBusinessHandlers(bot: Bot): void {
     try {
       const systemPrompt = [
         COMPOSED_SYSTEM_PROMPT,
-        FACTS_CONTEXT,
+        buildFactsContext(),
         ownerContext(),
         getContactContext(chatId, msg.from?.username),
       ]
