@@ -7,5 +7,8 @@ facts.json
 *.swp
 *.swo
 *.log
+.idea/
+.vscode/
+*.tsbuildinfo
 npm-debug.log*
 .DS_Store

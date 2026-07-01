@@ -6,6 +6,7 @@
 
 When someone messages you, a bot connected via Telegram's Business (Secretary) Mode replies *as you* — in your voice, your language, and within your rules — powered by Google Gemini 2.5 Flash.
 
+[![CI](https://github.com/dostonsulaymon/secretary-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/dostonsulaymon/secretary-bot/actions/workflows/ci.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![grammY](https://img.shields.io/badge/grammY-1.30-009688)](https://grammy.dev/)
@@ -164,6 +165,10 @@ src/
 - [x] A personal facts / FAQ knowledge base
 - [x] Interactive owner control — manage contacts by DMing the bot
 - [ ] Draft-approval mode for important contacts
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code of Conduct](CODE_OF_CONDUCT.md) before opening a PR. Found a security issue? See [SECURITY.md](SECURITY.md) — report it privately, not as a public issue.
 
 ## License
 
