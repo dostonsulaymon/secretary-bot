@@ -21,8 +21,6 @@ When someone messages you, a bot connected via Telegram's Business (Secretary) M
 
 Secretary Bot uses Telegram's [Business Mode](https://core.telegram.org/bots#business) (also called *Chat Automation* / *Secretary Mode*) to handle incoming messages on your behalf. Unlike a generic chatbot, it's built to sound like **you**: it reads from a small set of your real example messages, mirrors your tone and language, and respects boundaries you define — so replies feel personal, not robotic.
 
-> **Note:** Connecting a bot to your personal profile requires **Telegram Premium**.
-
 ## Features
 
 - 🧠 **Speaks in your voice** — few-shot examples from your own messages teach it your tone, length, and style.
@@ -54,7 +52,6 @@ The bot subscribes to Telegram's `business_connection` and `business_message` up
 - A **Telegram bot token** — from [@BotFather](https://t.me/BotFather)
 - **Business (Secretary) Mode enabled** on that bot in BotFather — see [step 1](#1-enable-business-mode-on-the-bot). Without it, Telegram won't deliver the `business_message` updates the bot depends on, and nothing will work.
 - A **Google Gemini API key** — from [Google AI Studio](https://aistudio.google.com/apikey)
-- **Telegram Premium** on the account you want the bot to manage
 
 ## Quick start
 
@@ -72,7 +69,7 @@ In [@BotFather](https://t.me/BotFather): `/mybots` → select your bot → **Bot
 
 ### 2. Connect the bot to your profile
 
-In the Telegram app (Premium required): **Settings → Telegram Business → Chatbots** *(or **Chat Automation** on some clients)* → enter `@yourbotusername`, and grant the **"Reply to messages"** permission.
+In the Telegram app: **Settings → Telegram Business → Chatbots** *(or **Chat Automation** on some clients)* → enter `@yourbotusername`, and grant the **"Reply to messages"** permission.
 
 You'll receive a confirmation DM: `✅ Secretary Mode active`.
 

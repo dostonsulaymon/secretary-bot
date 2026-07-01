@@ -16,7 +16,7 @@ There is **no test suite**. `npm run typecheck` is the correctness gate — `tsc
 
 ## What this is
 
-A Telegram **Secretary Mode** (Business Mode) bot: when someone messages the *owner's* Telegram account, Telegram forwards it to this bot, which replies using Google Gemini 2.5 Flash. The persona is **first-person impersonation** — it replies *as* the owner ("tomorrow's packed"), not as a third-party assistant ("Doston is busy"); the `SYSTEM_PROMPT` and voice examples must stay first-person or the model breaks character. Requires Telegram Premium on the owner's account to connect. Config is via `.env` (see `.env.example`); `OWNER_USER_ID` is the owner's numeric Telegram ID, `OWNER_TIMEZONE` (default `Asia/Tashkent`) grounds date/time answers.
+A Telegram **Secretary Mode** (Business Mode) bot: when someone messages the *owner's* Telegram account, Telegram forwards it to this bot, which replies using Google Gemini 2.5 Flash. The persona is **first-person impersonation** — it replies *as* the owner ("tomorrow's packed"), not as a third-party assistant ("Doston is busy"); the `SYSTEM_PROMPT` and voice examples must stay first-person or the model breaks character. Config is via `.env` (see `.env.example`); `OWNER_USER_ID` is the owner's numeric Telegram ID, `OWNER_TIMEZONE` (default `Asia/Tashkent`) grounds date/time answers.
 
 ## Architecture — the non-obvious parts
 
