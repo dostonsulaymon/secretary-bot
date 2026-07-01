@@ -84,6 +84,34 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
 }
 
 /**
+ * Transcribe an audio clip (e.g. a Telegram voice note) with Gemini's native audio support.
+ * Returns the verbatim transcription in its original language, or "" if there's no speech.
+ */
+export async function transcribeAudio(base64Audio: string, mimeType: string): Promise<string> {
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    generationConfig: {
+      temperature: 0,
+      thinkingConfig: { thinkingBudget: 0 },
+    } as unknown as GenerationConfig,
+  });
+  const result = await withRetry(() =>
+    model.generateContent([
+      { inlineData: { data: base64Audio, mimeType } },
+      {
+        text:
+          "Transcribe this voice message verbatim, in its ORIGINAL language — do not translate. " +
+          "The speaker most likely uses Uzbek, Russian, or English (possibly mixed). " +
+          "Write Uzbek in Latin script (the way people text: \"qanaqasan\", not Cyrillic). " +
+          "Output only the transcription text — no preamble, no quotes. " +
+          "If there is no intelligible speech, output nothing.",
+      },
+    ]),
+  );
+  return result.response.text().trim();
+}
+
+/**
  * Structured-output call for internal tasks (e.g. parsing the owner's commands).
  * Forces JSON output and disables thinking. Returns the raw JSON string.
  */

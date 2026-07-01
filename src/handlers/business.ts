@@ -1,5 +1,5 @@
 import { Bot, GrammyError, type Context } from "grammy";
-import { generateReply } from "../ai/gemini";
+import { generateReply, transcribeAudio } from "../ai/gemini";
 import { buildSystemPrompt } from "../profile/voice";
 import { getContactContext } from "../profile/contacts";
 import { buildFactsContext } from "../profile/facts";
@@ -11,6 +11,7 @@ import {
 } from "../store/sessions";
 
 const OWNER_USER_ID = Number(process.env.OWNER_USER_ID);
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const SYSTEM_PROMPT =
   process.env.SYSTEM_PROMPT ??
   "You are a helpful personal assistant replying on behalf of the account owner.";
@@ -110,6 +111,17 @@ function isInactiveChatError(err: unknown): boolean {
   );
 }
 
+/** Download a Telegram voice note and transcribe it to text via Gemini. */
+async function transcribeVoice(ctx: Context, fileId: string, mimeType?: string): Promise<string> {
+  const file = await ctx.api.getFile(fileId);
+  if (!file.file_path) throw new Error("Telegram returned no file_path");
+  const url = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`voice download failed: ${res.status}`);
+  const base64 = Buffer.from(await res.arrayBuffer()).toString("base64");
+  return transcribeAudio(base64, mimeType ?? "audio/ogg");
+}
+
 async function notifyOwner(ctx: Context, text: string): Promise<void> {
   if (!Number.isFinite(OWNER_USER_ID)) return;
   try {
@@ -163,7 +175,6 @@ export function registerBusinessHandlers(bot: Bot): void {
 
     const bizConnId = msg.business_connection_id;
     const chatId = msg.chat.id;
-    const text = msg.text;
     const fromId = msg.from?.id;
 
     if (!bizConnId) return;
@@ -173,10 +184,7 @@ export function registerBusinessHandlers(bot: Bot): void {
       `business_message from id=${fromId}${msg.from?.username ? ` @${msg.from.username}` : ""} in chat ${chatId}`,
     );
 
-    // Only handle plain text for now.
-    if (!text) return;
-
-    // Never reply to the owner's own outgoing messages.
+    // Never reply to the owner's own outgoing messages (before any transcription work).
     if (fromId !== undefined && fromId === OWNER_USER_ID) return;
 
     // Respect reply rights if we know them for this connection.
@@ -185,6 +193,23 @@ export function registerBusinessHandlers(bot: Bot): void {
       console.warn(`Connection ${bizConnId} lacks can_reply; skipping chat ${chatId}.`);
       return;
     }
+
+    // Resolve the incoming text: message text, or a transcribed voice note.
+    let text = msg.text;
+    if (!text && msg.voice) {
+      try {
+        text = await transcribeVoice(ctx, msg.voice.file_id, msg.voice.mime_type);
+        console.log(`Transcribed voice in chat ${chatId}: "${text}"`);
+      } catch (err) {
+        console.error(`Voice transcription failed for chat ${chatId}:`, err);
+        await notifyOwner(
+          ctx,
+          `⚠️ Couldn't transcribe a voice message in chat ${chatId}: ${(err as Error).message}`,
+        );
+        return;
+      }
+    }
+    if (!text) return; // ignore other media (photos, stickers, …) for now
 
     const key = sessionKey(bizConnId, chatId);
     const history = getHistory(key);

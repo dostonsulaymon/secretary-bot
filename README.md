@@ -31,6 +31,7 @@ Secretary Bot uses Telegram's [Business Mode](https://core.telegram.org/bots#bus
 - 🗣️ **Configure by chat** — DM the bot *"treat @ali as my client, he's a he"* or *"add a fact: I don't work weekends"* and it parses, confirms, and saves contacts **and facts** — no file editing, no restart.
 - 📇 **Personal knowledge base** — answers from a facts/FAQ file, and refuses to invent personal details it doesn't know.
 - ⌨️ **Human pacing** — bursty, bimodal timing: usually replies in seconds, but occasionally goes quiet for a minute or two like someone who stepped away, then a short "typing…" burst right before sending. Momentum-aware (rapid back-and-forth stays snappy).
+- 🎙️ **Voice notes** — transcribes incoming voice messages (Uzbek/Russian/English, kept verbatim) and replies to them like any text.
 - 🌍 **Language-matching** — replies in whatever language the sender writes in.
 - 💬 **Per-chat memory** — keeps the last 20 message pairs of context for each conversation.
 - ⏰ **Time-aware** — grounded with your real local date/time, so it never fabricates "what time is it?"
@@ -154,7 +155,7 @@ src/
 ## Limitations
 
 - **Memory is in-process** — conversation history is wiped on restart. Swap `src/store/sessions.ts` for Redis/SQLite to persist.
-- **Text only** — non-text messages (photos, voice, stickers) are currently ignored.
+- **Text & voice** — text messages and voice notes (transcribed via Gemini) are handled; other media (photos, stickers, video notes) are currently ignored.
 - **Single instance** — long polling does not support multiple instances on the same token.
 - **SDK** — uses the now-deprecated `@google/generative-ai`; migration to `@google/genai` is planned.
 

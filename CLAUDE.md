@@ -29,7 +29,8 @@ Business messages arrive as `business_message` updates and **never** trigger the
 **`allowed_updates` is load-bearing.** Telegram does *not* deliver `business_*` updates unless they're explicitly listed in `bot.start({ allowed_updates: [...] })` in `src/index.ts`. Dropping them there silently breaks the entire bot with no error.
 
 **Reply flow** (`business_message` handler):
-1. Skip if no text, no `business_connection_id`, or sender is the owner (`from.id === OWNER_USER_ID`) — prevents the bot replying to itself.
+1. Skip if no `business_connection_id`, or sender is the owner (`from.id === OWNER_USER_ID`) — prevents the bot replying to itself. Owner-skip happens **before** any transcription so we don't spend a Gemini call on the owner's own voice notes.
+1a. Resolve the incoming text: use `msg.text`, or if it's a voice note (`msg.voice`), download the OGG via `getFile` and transcribe it with `transcribeAudio()` (Gemini native audio; prompt forces original language and Uzbek-in-Latin script). Other media is ignored. The transcript then flows through the normal pipeline and into history.
 2. Skip if the connection's `can_reply` is false.
 3. Call Gemini with per-chat history.
 4. `ctx.api.sendMessage(chatId, reply, { business_connection_id })` — the `business_connection_id` option is what makes the reply go out *as the owner*. Omitting it sends as the bot.
@@ -62,5 +63,5 @@ The full per-message system prompt order is: `COMPOSED_SYSTEM_PROMPT + FACTS_CON
 ## Gotchas
 
 - **`@google/generative-ai` is deprecated** in favor of `@google/genai`. It still works with `gemini-2.5-flash`; if you touch `src/ai/gemini.ts`, consider migrating. Note `thinkingConfig` isn't in this SDK's types — it's passed via an `as unknown as GenerationConfig` cast and only honored by the REST API. The newer SDK types it properly.
-- Only **text** messages are handled — photos/voice/stickers are ignored in the `business_message` handler. Extend there to support them.
+- **Text and voice notes** are handled; other media (photos, stickers, video notes) are ignored in the `business_message` handler. Extend there to support them. Voice replies (TTS) are not implemented — replies to voice notes go out as text.
 - Long polling means **one instance per token** — running two concurrently conflicts.
